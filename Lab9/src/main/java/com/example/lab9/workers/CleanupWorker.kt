@@ -1,0 +1,46 @@
+package com.example.lab9.workers
+
+import android.content.Context
+import android.util.Log
+import androidx.work.CoroutineWorker
+import androidx.work.WorkerParameters
+import com.example.lab9.DELAY_TIME_MILLIS
+import com.example.lab9.OUTPUT_PATH
+import com.example.lab9.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import java.io.File
+
+private const val TAG = "Lab9_CleanupWorker"
+
+class CleanupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
+
+    override suspend fun doWork(): Result {
+        makeStatusNotification(
+            applicationContext.resources.getString(R.string.cleaning_up_files),
+            applicationContext
+        )
+
+        return withContext(Dispatchers.IO) {
+            delay(DELAY_TIME_MILLIS)
+
+            return@withContext try {
+                val outputDirectory = File(applicationContext.filesDir, OUTPUT_PATH)
+                if (outputDirectory.exists()) {
+                    outputDirectory.listFiles()?.forEach { entry ->
+                        val name = entry.name
+                        if (name.isNotEmpty() && name.endsWith(".png")) {
+                            val deleted = entry.delete()
+                            Log.i(TAG, "Đã xóa file rác $name - Trạng thái: $deleted")
+                        }
+                    }
+                }
+                Result.success()
+            } catch (exception: Exception) {
+                Log.e(TAG, applicationContext.resources.getString(R.string.error_cleaning_file), exception)
+                Result.failure()
+            }
+        }
+    }
+}
